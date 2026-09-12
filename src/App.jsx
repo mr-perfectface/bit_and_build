@@ -4,7 +4,7 @@ import RoleSelection from "./pages/roleselection";
 import StudentLogin from "./pages/studentLogin";
 import TeacherAuth from "./pages/teacherauth";
 
-import StudentDashboard from "./pages/studentdashboard";
+import StudentDashboard from "./pages/StudentDashboard";
 import ChapterPage from "./pages/ChapterPage";
 import LessonPage from "./pages/lessonpage";
 import TeacherDashboard from "./pages/TeacherDashboard";
