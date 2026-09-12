@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import RoleSelection from "./pages/roleselection";
-import StudentLogin from "./pages/studentlogin";
+import StudentLogin from "./pages/studentLogin";
 import TeacherAuth from "./pages/teacherauth";
 
 function App() {
