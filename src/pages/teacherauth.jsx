@@ -74,14 +74,30 @@ function TeacherAuth() {
     });
 
     if (error) {
-      setMessage(`Login failed: ${error.message}`);
-      setIsError(true);
-    } else {
-      setMessage("Login successful! Redirecting...");
-      setIsError(false);
-      console.log("Logged in user:", data.user);
+  setMessage(error.message);
+  setLoading(false);
+  return;
+}
+
+    const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+
+    if (profileError) {
+    setMessage(`Could not verify account: ${profileError.message}`);
+    setLoading(false);
+    return;
     }
 
+    if (profile.role !== "teacher") {
+    setMessage("This account is not registered as a teacher.");
+    setLoading(false);
+    return;
+    }
+
+    navigate("/teacher-dashboard");
     setLoading(false);
   }
 
