@@ -10,6 +10,7 @@ function StudentLogin() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -22,12 +23,30 @@ function StudentLogin() {
     });
 
     if (error) {
-      setMessage(`Login Failed: ${error.message}`);
-    } else {
-      setMessage("Login Successful!");
-      console.log("Logged in user:", data.user);
+  setMessage(`Login Failed: ${error.message}`);
+  setLoading(false);
+  return;
+}
+
+const { data: profile, error: profileError } = await supabase
+  .from("profiles")
+  .select("role")
+  .eq("id", data.user.id)
+  .single();
+
+    if (profileError) {
+    setMessage(`Could not verify account: ${profileError.message}`);
+    setLoading(false);
+    return;
     }
 
+    if (profile.role !== "student") {
+    setMessage("This account is not registered as a student.");
+    setLoading(false);
+    return;
+    }
+
+    navigate("/student-dashboard");
     setLoading(false);
   }
 
@@ -53,17 +72,17 @@ function StudentLogin() {
 
           <form onSubmit={handleLogin} style={styles.form}>
             <div style={styles.inputWrapperSimple}>
-  <span style={styles.inputIcon}>✉️</span>
-  <input
-    type="email"
-    placeholder="Email Address"
-    autoComplete = "new-password"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-    required
-    style={styles.inputSimple}
-  />
-</div>
+                <span style={styles.inputIcon}>✉️</span>
+                <input
+                type="email"
+                placeholder="Email Address"
+                autoComplete = "new-password"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={styles.inputSimple}
+                />
+            </div>
 
             <div style={styles.inputWrapperSimple}>
               <span style={styles.inputIcon}>🔒</span>
@@ -296,6 +315,7 @@ const styles = {
     color: "#2f2b26",
     textAlign: "center",
   },
+  
 };
 
 export default StudentLogin;
