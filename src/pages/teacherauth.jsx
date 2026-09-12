@@ -105,7 +105,7 @@ function TeacherAuth() {
     <div style={styles.page}>
       <div style={styles.logoRow}>
         <span style={styles.logoIcon}>📖</span>
-        <span style={styles.logoText}>LearnEase</span>
+        <span style={styles.logoText}>Jumblrr</span>
       </div>
 
       <div style={styles.card}>

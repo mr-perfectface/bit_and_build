@@ -224,7 +224,7 @@ function StudentDashboard() {
 
         <div className="logo">
           📖
-          <span>LearnEase</span>
+          <span>Jumblrr</span>
         </div>
 
         <div className="welcome-text">
@@ -232,7 +232,7 @@ function StudentDashboard() {
           <span>Welcome back!</span>
 
           <h2>
-            Hi, Aarav — ready to learn?
+            Hi, Ishan Awasthi — ready to learn?
           </h2>
 
         </div>
@@ -454,7 +454,7 @@ function StudentDashboard() {
             <div>
 
               <strong>
-                Piyush Kumar
+                Ishan Awasthi
               </strong>
 
               <span>

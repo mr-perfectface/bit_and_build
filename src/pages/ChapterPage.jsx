@@ -74,7 +74,7 @@ function openChapter(chapter) {
       <header className="student-header">
 
         <div className="logo">
-          📖 <span>LearnEase</span>
+          📖 <span>Jumblrr</span>
         </div>
 
         <div className="welcome-text">
@@ -82,7 +82,7 @@ function openChapter(chapter) {
           <span>YOUR LEARNING SPACE</span>
 
           <h2>
-            Hi, Aarav — ready to learn?
+            Hi, Ishan Awasthi — ready to learn?
           </h2>
 
         </div>
