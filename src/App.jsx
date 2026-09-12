@@ -3,8 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import RoleSelection from "./pages/roleselection";
 import StudentLogin from "./pages/studentLogin";
 import TeacherAuth from "./pages/teacherauth";
-import StudentDashboard from './pages/StudentDashboard'
-import TeacherDashboard from './pages/TeacherDashboard'
+
 
 
 function App() {
@@ -27,8 +26,7 @@ function App() {
           path="/teacher-auth"
           element={<TeacherAuth />}
         />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+        
 
         
 
