@@ -10,9 +10,9 @@ function RoleSelection() {
       <div style={styles.header}>
         <div style={styles.logoRow}>
           <span style={styles.logoIcon}>📖</span>
-          <span style={styles.logoText}>LearnEase</span>
+          <span style={styles.logoText}>Jumblrr</span>
         </div>
-        <h1 style={styles.title}>Welcome to LearnEase</h1>
+        <h1 style={styles.title}>Welcome to Jumblrr</h1>
         <p style={styles.subtitle}>Choose how you want to sign in</p>
       </div>
 

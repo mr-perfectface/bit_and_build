@@ -235,7 +235,7 @@ function TeacherDashboard() {
         <div className="le-brand">
           <div className="le-brand-icon">📖</div>
           <div>
-            <div className="le-brand-name">LearnEase</div>
+            <div className="le-brand-name">Jumblrr</div>
             <div className="le-brand-sub">Teacher workspace</div>
           </div>
         </div>
@@ -422,7 +422,7 @@ function TeacherDashboard() {
           </>
         )}
 
-        <div className="le-footer">Built with care · LearnEase makes reading easier for every learner.</div>
+        <div className="le-footer">Built with care · Jumblrr makes reading easier for every learner.</div>
       </div>
     </div>
   );
