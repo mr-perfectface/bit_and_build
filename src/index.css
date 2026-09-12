@@ -1,111 +1,370 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap');
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff");
+  font-weight: normal;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Bold.woff");
+  font-weight: bold;
+}
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  font-family: Arial, sans-serif;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+.student-page {
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  position: relative;
+  color: #222;
+  transition: 0.3s;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+.student-main {
+  flex: 1;
+  padding: 35px 55px;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.student-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 45px;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+
+.logo {
+  font-size: 25px;
+  font-weight: bold;
 }
-p {
+
+.student-header h2 {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+.profile-small {
+  font-size: 30px;
 }
 
-code {
+.student-main h1 {
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  margin-top: 0;
+}
+
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.subject-card {
+  background: #fffdf7;
+  padding: 25px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.subject-card:hover {
+  transform: translateY(-5px);
+}
+
+.subject-icon {
+  font-size: 55px;
+  margin-bottom: 10px;
+}
+
+.subject-card h2 {
+  margin: 5px;
+}
+
+.subject-card p {
   font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  font-weight: bold;
+}
+
+.subject-card small {
+  font-size: 14px;
+}
+
+
+/* Accessibility Panel */
+
+.accessibility-panel {
+  width: 340px;
+  background: #fffdf7;
+  padding: 30px;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.08);
+}
+
+.accessibility-panel h2 {
+  margin-top: 0;
+}
+
+.accessibility-panel h3 {
+  margin-top: 30px;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 15px;
+  background: #faf6e9;
+}
+
+.profile-image {
+  font-size: 35px;
+}
+
+.profile-card span {
+  font-size: 14px;
+}
+
+.accessibility-panel label {
+  display: block;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.accessibility-panel select {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  background: white;
+}
+
+.accessibility-panel input[type="range"] {
+  width: 100%;
+}
+
+
+/* Colors */
+
+.color-options {
+  display: flex;
+  gap: 10px;
+}
+
+.color-box {
+  width: 35px;
+  height: 35px;
+  border-radius: 8px;
+  border: 2px solid #aaa;
+  cursor: pointer;
+}
+
+.cream {
+  background: #fff8e7;
+}
+
+.white {
+  background: white;
+}
+
+.blue {
+  background: #e8f1ff;
+}
+
+.green {
+  background: #e8f5e9;
+}
+
+.peach {
+  background: #ffe8d6;
+}
+
+
+/* Toggle */
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.toggle {
+  width: 42px;
+  height: 23px;
+  border: none;
+  border-radius: 20px;
+  background: #ccc;
+  padding: 3px;
+  cursor: pointer;
+}
+
+.toggle span {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: white;
+  transition: 0.2s;
+}
+
+.toggle.active {
+  background: #3f9995;
+}
+
+.toggle.active span {
+  transform: translateX(19px);
+}
+
+
+/* Save */
+
+.save-button {
+  width: 100%;
+  margin-top: 25px;
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: #3f9995;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+
+/* Voice */
+
+.voice-button {
+  position: fixed;
+  bottom: 0;
+  right: 330px;
+  width: 120px;
+  height: 80px;
+  border: none;
+  border-radius: 50% 50% 0 0;
+  background: #3f9995;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.voice-button span {
+  display: block;
+  font-size: 13px;
+}
+
+
+/* Reduce motion */
+
+.no-motion *,
+.no-motion {
+  transition: none !important;
+  animation: none !important;
+}
+
+
+/* Mobile */
+
+@media (max-width: 900px) {
+
+  .student-page {
+    flex-direction: column;
+  }
+
+  .subjects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .accessibility-panel {
+    width: 100%;
+  }
+
+  .student-main {
+    padding: 25px;
+  }
+
+  .voice-button {
+    right: 20px;
+  }
+}
+.lesson-reader {
+  margin-top: 50px;
+  max-width: 850px;
+  padding: 30px;
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.08);
+}
+
+.lesson-label {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  opacity: 0.6;
+}
+
+.lesson-reader h1 {
+  margin-top: 10px;
+  margin-bottom: 25px;
+}
+
+.lesson-content p {
+  margin-bottom: 25px;
+}
+
+.lesson-example {
+  padding: 20px;
+  margin-top: 30px;
+  border-radius: 12px;
+  background: #fff8e7;
+}
+.reading-ruler {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background: rgba(255, 220, 100, 0.35);
+  border-top: 2px solid rgba(200, 150, 0, 0.4);
+  border-bottom: 2px solid rgba(200, 150, 0, 0.4);
+  pointer-events: none;
+  z-index: 999;
+}
+.speech-controls {
+  margin-top: 25px;
+}
+
+.speak-button,
+.stop-button {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.speak-button {
+  background: #3f9995;
+  color: white;
+}
+
+.stop-button {
+  background: #d9534f;
+  color: white;
+}
+
+.speak-button:hover,
+.stop-button:hover {
+  opacity: 0.85;
 }
