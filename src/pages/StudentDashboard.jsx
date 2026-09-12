@@ -1,282 +1,783 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-const SUBJECT_ICONS = {
-  Math: "🧮",
-  Science: "🧪",
-  English: "📄",
-  History: "📜",
-  Geography: "🌍",
-  Art: "🎨",
-};
-
-const BG_TINTS = ["#ffffff", "#e8d9c3", "#a9c4dd", "#1e2530"];
-
 function StudentDashboard() {
-  const [userId, setUserId] = useState(null);
-  const [name, setName] = useState("");
-  const [subjects, setSubjects] = useState([]);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
 
-  const [prefs, setPrefs] = useState({
-    font_size: 110,
-    letter_spacing: 0.5,
-    line_spacing: 1.5,
-    word_spacing: 1,
-    bg_color: "#ffffff",
-  });
-  const [hasExistingPrefs, setHasExistingPrefs] = useState(false);
-  const [fontFamily, setFontFamily] = useState("OpenDyslexic");
+  // ================= ACCESSIBILITY SETTINGS =================
+
+  const [fontFamily, setFontFamily] = useState("Arial");
+  const [fontSize, setFontSize] = useState(18);
+  const [letterSpacing, setLetterSpacing] = useState(1);
+  const [lineHeight, setLineHeight] = useState(1.8);
+  const [wordSpacing, setWordSpacing] = useState(2);
+
+  const [backgroundColor, setBackgroundColor] =
+    useState("#FFF8E7");
+
+  const [readingRuler, setReadingRuler] =
+    useState(false);
+
+  const [boldText, setBoldText] =
+    useState(false);
+
+  const [highlightLinks, setHighlightLinks] =
+    useState(false);
+
+  const [reduceMotion, setReduceMotion] =
+    useState(false);
+
+  const [accessibilityOpen, setAccessibilityOpen] =
+    useState(true);
+
+  const [mouseY, setMouseY] = useState(0);
+
+  // ================= SUBJECTS =================
+
+  const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function init() {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = sessionData.session;
-      if (!session) {
-        setMessage("Not logged in");
-        setLoading(false);
-        return;
-      }
-      setUserId(session.user.id);
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", session.user.id)
-        .single();
-      if (profile) setName(profile.name);
-
-      // Fetch subjects, one card per subject
-      const { data: subjectData, error: subjectError } = await supabase
-        .from("subjects")
-        .select("sub_id, name");
-      if (subjectError) setMessage(`Error loading subjects: ${subjectError.message}`);
-      else setSubjects(subjectData || []);
-
-      const { data: prefData } = await supabase
-        .from("preferences")
-        .select("*")
-        .eq("student_id", session.user.id)
-        .maybeSingle();
-
-      if (prefData) {
-        setPrefs({
-          font_size: prefData.font_size ?? 110,
-          letter_spacing: prefData.letter_spacing ?? 0.5,
-          line_spacing: prefData.line_spacing ?? 1.5,
-          word_spacing: prefData.word_spacing ?? 1,
-          bg_color: prefData.bg_color ?? "#ffffff",
-        });
-        setHasExistingPrefs(true);
-      }
-
-      setLoading(false);
-    }
-    init();
+    fetchSubjects();
   }, []);
 
-  function updatePref(key, value) {
-    setPrefs((prev) => ({ ...prev, [key]: value }));
+  async function fetchSubjects() {
+
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("sub_id, name")
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (error) {
+
+      console.error(
+        "Error loading subjects:",
+        error
+      );
+
+      setSubjects([]);
+
+    } else {
+
+      setSubjects(data || []);
+
+    }
+
+    setLoading(false);
   }
+
+  // ================= SUBJECT ICON =================
+
+  function getSubjectIcon(name) {
+
+    const subject = name.toLowerCase();
+
+    if (subject.includes("math")) return "🧮";
+    if (subject.includes("science")) return "🧪";
+    if (subject.includes("english")) return "📖";
+    if (subject.includes("history")) return "🏛️";
+    if (subject.includes("geography")) return "🌍";
+    if (subject.includes("art")) return "🎨";
+
+    return "📚";
+  }
+
+  // ================= SUBJECT DESCRIPTION =================
+
+  function getSubjectDescription(name) {
+
+    const subject = name.toLowerCase();
+
+    if (subject.includes("math"))
+      return "Numbers, patterns and problem solving";
+
+    if (subject.includes("science"))
+      return "Explore nature and discover how things work";
+
+    if (subject.includes("english"))
+      return "Reading, stories and language";
+
+    if (subject.includes("history"))
+      return "Discover people, places and the past";
+
+    if (subject.includes("geography"))
+      return "Explore our planet and the world around us";
+
+    if (subject.includes("art"))
+      return "Creativity, colours and imagination";
+
+    return "Explore this subject";
+  }
+
+  // ================= OPEN SUBJECT =================
+
+  function openSubject(subject) {
+
+    navigate(`/chapters/${subject.sub_id}`);
+
+  }
+
+  // ================= READING RULER =================
+
+  function handleMouseMove(e) {
+
+    if (readingRuler) {
+      setMouseY(e.clientY);
+    }
+
+  }
+
+  // ================= SAVE ACCESSIBILITY =================
 
   async function savePreferences() {
-    if (hasExistingPrefs) {
-      const { error } = await supabase
-        .from("preferences")
-        .update(prefs)
-        .eq("student_id", userId);
-      if (error) {
-        setMessage(`Error saving preferences: ${error.message}`);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from("preferences")
-        .insert({ student_id: userId, ...prefs });
-      if (error) {
-        setMessage(`Error saving preferences: ${error.message}`);
-        return;
-      }
-      setHasExistingPrefs(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+
+      alert("Please login first.");
+
+      return;
+
     }
-    setMessage("Preferences saved");
+
+    const { error } = await supabase
+      .from("student_settings")
+      .upsert({
+
+        student_id: user.id,
+
+        font_family: fontFamily,
+
+        font_size: fontSize,
+
+        line_spacing: lineHeight,
+
+        letter_spacing: letterSpacing,
+
+        word_spacing: wordSpacing,
+
+        background_color: backgroundColor,
+
+        reading_speed: 0.8,
+
+        reading_ruler: readingRuler,
+
+        bold_text: boldText,
+
+        highlight_links: highlightLinks,
+
+        reduce_motion: reduceMotion,
+
+        updated_at:
+          new Date().toISOString(),
+
+      });
+
+    if (error) {
+
+      console.error(error);
+
+      alert(
+        "Failed to save preferences."
+      );
+
+    } else {
+
+      alert(
+        "Accessibility preferences saved!"
+      );
+
+    }
+
   }
 
-  if (loading) return <p style={{ padding: "2rem" }}>Loading...</p>;
+  // ================= PAGE =================
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <div style={styles.logoRow}>
-          <span style={styles.logoIcon}>📖</span>
-          <span style={styles.logoText}>LearnEase</span>
+
+    <div
+      className={
+        reduceMotion
+          ? "student-page no-motion"
+          : "student-page"
+      }
+
+      style={{
+        backgroundColor,
+      }}
+
+      onMouseMove={handleMouseMove}
+    >
+
+      {/* ================= HEADER ================= */}
+
+      <header className="student-header">
+
+        <div className="logo">
+          📖
+          <span>LearnEase</span>
         </div>
-        <h2 style={styles.greeting}>Hi, {name || "there"} — ready to learn?</h2>
-        <div style={styles.avatar}>{(name || "?").charAt(0)}</div>
-      </div>
 
-      <div style={styles.body}>
-        <div style={styles.main}>
-          <h1 style={styles.sectionTitle}>My Subjects</h1>
-          <p style={styles.sectionSubtitle}>Tap a card to start reading</p>
+        <div className="welcome-text">
 
-          {message && <p style={styles.message}>{message}</p>}
+          <span>Welcome back!</span>
 
-          <div style={styles.grid}>
-            {subjects.map((subject) => {
-              const icon = SUBJECT_ICONS[subject.name] || "📘";
-              return (
-                <div
-                  key={subject.sub_id}
-                  style={styles.card}
-                  onClick={() => navigate(`/subject/${subject.sub_id}`)}
-                >
-                  <div style={styles.cardIcon}>{icon}</div>
-                  <h3 style={styles.cardTitle}>{subject.name}</h3>
+          <h2>
+            Hi, Aarav — ready to learn?
+          </h2>
+
+        </div>
+
+        <div className="header-profile">
+          👨‍🎓
+        </div>
+
+      </header>
+
+
+      {/* ================= MAIN ================= */}
+
+      <main className="student-main">
+
+        {/* PAGE INTRO */}
+
+        <section className="dashboard-intro">
+
+          <div>
+
+            <p className="eyebrow">
+              YOUR LEARNING SPACE
+            </p>
+
+            <h1>
+              My Subjects
+            </h1>
+
+            <p>
+              Choose a subject to explore
+              chapters and lessons.
+            </p>
+
+          </div>
+
+          <div className="learning-tip">
+
+            <span>💡</span>
+
+            <div>
+
+              <strong>
+                Learning Tip
+              </strong>
+
+              <p>
+                Read at your own pace.
+                Use the accessibility settings
+                whenever you need them.
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* ================= SUBJECTS ================= */}
+
+        {loading && (
+
+          <div className="loading-card">
+
+            <div className="loading-icon">
+              📚
+            </div>
+
+            <h3>
+              Loading your subjects...
+            </h3>
+
+            <p>
+              Getting your learning space ready.
+            </p>
+
+          </div>
+
+        )}
+
+
+        {!loading &&
+          subjects.length === 0 && (
+
+          <div className="empty-message">
+
+            <div className="empty-icon">
+              📚
+            </div>
+
+            <h2>
+              No subjects available
+            </h2>
+
+            <p>
+              Your teacher has not added
+              subjects yet.
+            </p>
+
+          </div>
+
+        )}
+
+
+        {!loading &&
+          subjects.length > 0 && (
+
+          <div className="subjects-grid">
+
+            {subjects.map((subject) => (
+
+              <button
+                key={subject.sub_id}
+                className="subject-card"
+                onClick={() =>
+                  openSubject(subject)
+                }
+              >
+
+                <div className="subject-icon">
+
+                  {getSubjectIcon(
+                    subject.name
+                  )}
+
                 </div>
-              );
-            })}
-            {subjects.length === 0 && <p>No subjects available yet.</p>}
-          </div>
-        </div>
 
-        <div style={styles.sidebar}>
-          <h3 style={styles.sidebarTitle}>Accessibility &amp; Profile</h3>
-          <div style={styles.profileRow}>
-            <div style={styles.smallAvatar}>{(name || "?").charAt(0)}</div>
-            <span style={styles.profileName}>{name}</span>
-          </div>
+                <h2>
+                  {subject.name}
+                </h2>
 
-          <h4 style={styles.settingsHeading}>Reading Settings</h4>
+                <p>
+                  {getSubjectDescription(
+                    subject.name
+                  )}
+                </p>
 
-          <label style={styles.label}>Font Family</label>
-          <select
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value)}
-            style={styles.select}
-          >
-            <option value="OpenDyslexic">OpenDyslexic</option>
-            <option value="Lexend">Lexend</option>
-            <option value="Default">Default</option>
-          </select>
+                <div className="card-footer">
 
-          <SliderRow
-            label="Font Size"
-            value={prefs.font_size}
-            unit="%"
-            min={80}
-            max={160}
-            onChange={(v) => updatePref("font_size", v)}
-          />
-          <SliderRow
-            label="Letter Spacing"
-            value={prefs.letter_spacing}
-            unit=""
-            prefix="+"
-            min={0}
-            max={3}
-            step={0.1}
-            onChange={(v) => updatePref("letter_spacing", v)}
-          />
-          <SliderRow
-            label="Line Height"
-            value={prefs.line_spacing}
-            unit=""
-            min={1}
-            max={2.5}
-            step={0.1}
-            onChange={(v) => updatePref("line_spacing", v)}
-          />
-          <SliderRow
-            label="Word Spacing"
-            value={prefs.word_spacing}
-            unit=""
-            prefix="+"
-            min={0}
-            max={4}
-            step={0.5}
-            onChange={(v) => updatePref("word_spacing", v)}
-          />
+                  <span>
+                    Explore chapters
+                  </span>
 
-          <label style={styles.label}>Background Tint</label>
-          <div style={styles.tintRow}>
-            {BG_TINTS.map((tint) => (
-              <div
-                key={tint}
-                onClick={() => updatePref("bg_color", tint)}
-                style={{
-                  ...styles.tintSwatch,
-                  backgroundColor: tint,
-                  border: prefs.bg_color === tint ? "3px solid #3f9c8f" : "1px solid #ccc",
-                }}
-              />
+                  <span className="arrow">
+                    →
+                  </span>
+
+                </div>
+
+              </button>
+
             ))}
+
           </div>
 
-          <button style={styles.saveButton} onClick={savePreferences}>
-            Save Preferences
+        )}
+
+      </main>
+
+
+      {/* ================= ACCESSIBILITY BUTTON ================= */}
+
+      <button
+        className="accessibility-float"
+        onClick={() =>
+          setAccessibilityOpen(
+            !accessibilityOpen
+          )
+        }
+        aria-label="Accessibility settings"
+      >
+
+        Aa
+
+      </button>
+
+
+      {/* ================= ACCESSIBILITY PANEL ================= */}
+
+      {accessibilityOpen && (
+
+        <aside className="accessibility-panel">
+
+          <div className="accessibility-header">
+
+            <div>
+
+              <p>
+                PERSONALIZE
+              </p>
+
+              <h2>
+                Accessibility
+              </h2>
+
+            </div>
+
+            <button
+              className="close-accessibility"
+              onClick={() =>
+                setAccessibilityOpen(false)
+              }
+            >
+              ×
+            </button>
+
+          </div>
+
+
+          {/* PROFILE */}
+
+          <div className="profile-card">
+
+            <div className="profile-image">
+              👨‍🎓
+            </div>
+
+            <div>
+
+              <strong>
+                Piyush Kumar
+              </strong>
+
+              <span>
+                Class 5 • Student
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <div className="settings-title">
+            Reading Settings
+          </div>
+
+
+          {/* FONT */}
+
+          <div className="setting-group">
+
+            <label>
+              Font Family
+            </label>
+
+            <select
+              value={fontFamily}
+              onChange={(e) =>
+                setFontFamily(
+                  e.target.value
+                )
+              }
+            >
+
+              <option value="Arial">
+                Arial
+              </option>
+
+              <option value="Verdana">
+                Verdana
+              </option>
+
+              <option value="Georgia">
+                Georgia
+              </option>
+
+              <option value="OpenDyslexic">
+                OpenDyslexic
+              </option>
+
+              <option value="Lexend">
+                Lexend
+              </option>
+
+            </select>
+
+          </div>
+
+
+          {/* FONT SIZE */}
+
+          <div className="setting-group">
+
+            <label>
+              Font Size
+              <span>{fontSize}px</span>
+            </label>
+
+            <input
+              type="range"
+              min="14"
+              max="30"
+              value={fontSize}
+              onChange={(e) =>
+                setFontSize(
+                  Number(e.target.value)
+                )
+              }
+            />
+
+          </div>
+
+
+          {/* LETTER SPACING */}
+
+          <div className="setting-group">
+
+            <label>
+              Letter Spacing
+              <span>
+                {letterSpacing}px
+              </span>
+            </label>
+
+            <input
+              type="range"
+              min="0"
+              max="5"
+              step="0.5"
+              value={letterSpacing}
+              onChange={(e) =>
+                setLetterSpacing(
+                  Number(e.target.value)
+                )
+              }
+            />
+
+          </div>
+
+
+          {/* LINE HEIGHT */}
+
+          <div className="setting-group">
+
+            <label>
+              Line Height
+              <span>
+                {lineHeight}
+              </span>
+            </label>
+
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.1"
+              value={lineHeight}
+              onChange={(e) =>
+                setLineHeight(
+                  Number(e.target.value)
+                )
+              }
+            />
+
+          </div>
+
+
+          {/* WORD SPACING */}
+
+          <div className="setting-group">
+
+            <label>
+              Word Spacing
+              <span>
+                {wordSpacing}px
+              </span>
+            </label>
+
+            <input
+              type="range"
+              min="0"
+              max="10"
+              value={wordSpacing}
+              onChange={(e) =>
+                setWordSpacing(
+                  Number(e.target.value)
+                )
+              }
+            />
+
+          </div>
+
+
+          {/* BACKGROUND */}
+
+          <div className="setting-group">
+
+            <label>
+              Background Tint
+            </label>
+
+            <div className="color-options">
+
+              <button
+                className="color-box cream"
+                onClick={() =>
+                  setBackgroundColor(
+                    "#FFF8E7"
+                  )
+                }
+              />
+
+              <button
+                className="color-box white"
+                onClick={() =>
+                  setBackgroundColor(
+                    "#FFFFFF"
+                  )
+                }
+              />
+
+              <button
+                className="color-box blue"
+                onClick={() =>
+                  setBackgroundColor(
+                    "#E8F1FF"
+                  )
+                }
+              />
+
+              <button
+                className="color-box green"
+                onClick={() =>
+                  setBackgroundColor(
+                    "#E8F5E9"
+                  )
+                }
+              />
+
+              <button
+                className="color-box peach"
+                onClick={() =>
+                  setBackgroundColor(
+                    "#FFE8D6"
+                  )
+                }
+              />
+
+            </div>
+
+          </div>
+
+
+          {/* TOGGLES */}
+
+          <div className="accessibility-options">
+
+            <SettingToggle
+              name="Reading Ruler"
+              value={readingRuler}
+              setValue={setReadingRuler}
+            />
+
+            <SettingToggle
+              name="Bold Text"
+              value={boldText}
+              setValue={setBoldText}
+            />
+
+            <SettingToggle
+              name="Highlight Links"
+              value={highlightLinks}
+              setValue={setHighlightLinks}
+            />
+
+            <SettingToggle
+              name="Reduce Motion"
+              value={reduceMotion}
+              setValue={setReduceMotion}
+            />
+
+          </div>
+
+
+          {/* SAVE */}
+
+          <button
+            className="save-button"
+            onClick={savePreferences}
+          >
+            ✓ Save Preferences
           </button>
-        </div>
-      </div>
+
+        </aside>
+
+      )}
+
+
+      {/* ================= READING RULER ================= */}
+
+      {readingRuler && (
+
+        <div
+          className="reading-ruler"
+          style={{
+            top: `${mouseY - 20}px`,
+          }}
+        />
+
+      )}
+
     </div>
+
   );
+
 }
 
-function SliderRow({ label, value, unit, prefix = "", min, max, step = 1, onChange }) {
+
+/* ================= TOGGLE ================= */
+
+function SettingToggle({
+  name,
+  value,
+  setValue,
+}) {
+
   return (
-    <div style={styles.sliderRow}>
-      <div style={styles.sliderLabelRow}>
-        <span style={styles.label}>{label}</span>
-        <span style={styles.sliderValue}>{prefix}{value}{unit}</span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={styles.slider}
-      />
+
+    <div className="setting-row">
+
+      <span>
+        {name}
+      </span>
+
+      <button
+        className={
+          value
+            ? "toggle active"
+            : "toggle"
+        }
+        onClick={() =>
+          setValue(!value)
+        }
+      >
+
+        <span />
+
+      </button>
+
     </div>
+
   );
+
 }
 
-const styles = {
-  page: { minHeight: "100vh", backgroundColor: "#faf3e7", fontFamily: "'Inter', sans-serif" },
-  header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 2rem", borderBottom: "1px solid #e8dcc4" },
-  logoRow: { display: "flex", alignItems: "center", gap: "0.5rem" },
-  logoIcon: { fontSize: "1.6rem" },
-  logoText: { fontSize: "1.4rem", fontWeight: "800", color: "#3f9c8f" },
-  greeting: { fontSize: "1.3rem", fontWeight: "700", color: "#2f2b26", margin: 0 },
-  avatar: { width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "#f2c14e", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" },
-  body: { display: "flex", gap: "2rem", padding: "2rem", flexWrap: "wrap" },
-  main: { flex: "3 1 600px" },
-  sectionTitle: { fontSize: "1.8rem", fontWeight: "800", margin: "0 0 0.25rem 0", color: "#2f2b26" },
-  sectionSubtitle: { color: "#6b6459", marginBottom: "1.5rem" },
-  message: { color: "#c05f3d", fontWeight: "600" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1.25rem" },
-  card: { backgroundColor: "#ffffff", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", boxShadow: "0 6px 16px -4px rgba(0,0,0,0.06)", textAlign: "center" },
-  cardIcon: { fontSize: "2.5rem", marginBottom: "0.75rem" },
-  cardTitle: { fontSize: "1.2rem", fontWeight: "700", margin: "0 0 0.5rem 0", color: "#2f2b26" },
-  sidebar: { flex: "1 1 300px", backgroundColor: "#ffffff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 6px 16px -4px rgba(0,0,0,0.06)", height: "fit-content" },
-  sidebarTitle: { margin: "0 0 1rem 0", color: "#2f2b26" },
-  profileRow: { display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" },
-  smallAvatar: { width: "36px", height: "36px", borderRadius: "50%", backgroundColor: "#f2c14e", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" },
-  profileName: { fontWeight: "600", color: "#2f2b26" },
-  settingsHeading: { margin: "0 0 0.75rem 0", color: "#2f2b26" },
-  label: { fontSize: "0.85rem", fontWeight: "600", color: "#2f2b26" },
-  select: { width: "100%", padding: "0.5rem", borderRadius: "8px", border: "1px solid #e4dcc9", marginTop: "0.4rem", marginBottom: "1rem" },
-  sliderRow: { marginBottom: "1rem" },
-  sliderLabelRow: { display: "flex", justifyContent: "space-between", marginBottom: "0.3rem" },
-  sliderValue: { fontSize: "0.85rem", color: "#3f9c8f", fontWeight: "700" },
-  slider: { width: "100%" },
-  tintRow: { display: "flex", gap: "0.6rem", margin: "0.5rem 0 1.25rem 0" },
-  tintSwatch: { width: "28px", height: "28px", borderRadius: "50%", cursor: "pointer" },
-  saveButton: { width: "100%", padding: "0.85rem", borderRadius: "10px", border: "none", backgroundColor: "#3f9c8f", color: "#fff", fontWeight: "700", cursor: "pointer", marginTop: "0.5rem" },
-};
 
 export default StudentDashboard;
