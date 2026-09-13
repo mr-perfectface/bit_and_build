@@ -10,14 +10,14 @@ Dyslexia affects an estimated 6–12% of Indian schoolchildren, yet mainstream c
 
 ## Our Solution
 
-Jumblrr is a role-based learning platform where teachers create subject-organized lessons, and students read them through a fully adaptive interface — adjustable font, spacing, and background tint, dyslexia-friendly fonts, text-to-speech, inline highlighting of commonly confused word pairs, and a guided reading practice mode that listens to a student read aloud and highlights words that may need more practice.
+Jumblrr is a role-based learning platform where teachers create subject-organised lessons, and students read them through a fully adaptive interface — adjustable font, spacing, and background tint, dyslexia-friendly fonts, text-to-speech, inline highlighting of commonly confused word pairs, and a guided reading practice mode that listens to a student read aloud and highlights words that may need more practice.
 
 ## Key Features
 
 - **Role-based access** — separate teacher and student experiences, enforced at the database level via Row Level Security
 - **Adaptive reading settings** — font family, size, letter/word spacing, line height, background tint, and word chunking, saved per student
 - **Text-to-speech** — browser-native read-aloud for any lesson
-- **Confusable word highlighting** — commonly mixed-up word pairs are color-coded inline in lesson text
+- **Confusable word highlighting** — commonly mixed-up word pairs are colour-coded inline in lesson text
 - **Difficult word lookup** — automatic detection and plain-language definitions for challenging vocabulary in lesson content, powered by a Supabase Edge Function using the Gemini API
 - **Read & Check practice mode** — students read a passage aloud; speech recognition compares it against the original text, shows a reading-match score, and surfaces specific words to practice further
 - **Word Chunking** — long, difficult words are broken down for easier reading.
@@ -38,7 +38,7 @@ Jumblrr is a role-based learning platform where teachers create subject-organize
 - `subjects` — subjects created by teachers
 - `lesson` — lesson content, linked to a subject
 - `preferences` — per-student adaptive reading settings
-- `lesson_word_help` — API generated difficult words and thier meaning
+- `lesson_word_help` — API generated difficult words and their meanings
 - `confusing_words` — List of common words that are usually interchanged
 
 All tables are protected with Row Level Security: students can only read/write their own data, and teachers can view all student profiles.
@@ -65,7 +65,7 @@ npm install
 ```bash
 npm run dev
 ```
-The app will be available at the local host link shown in your terminal.
+The app will be available at the localhost link shown in your terminal.
 
 ## Live Deployment
 
@@ -80,8 +80,8 @@ The app will be available at the local host link shown in your terminal.
 
 ## Future Scope
 
-- Letter-level confusable pair highlighting (b/d, p/q)
-- Teacher-initiated student account creation
-- Per-student progress tracking across lessons
-- Analytics dashboard for reading progress trends over time
-- Exam focus mode
+- Adaptive content difficulty: Automatically adjust vocabulary and explanation complexity based on a student's reading performance.
+- Teacher Analysis: Show teachers the words, lessons, and concepts students commonly struggle with
+- Multilingual Accessibility
+- Cross-Platform Learning
+  
