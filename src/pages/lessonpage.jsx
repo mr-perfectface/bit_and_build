@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
@@ -39,10 +39,21 @@ function LessonPage() {
   const [boldText, setBoldText] = useState(false);
   const [highlightLinks, setHighlightLinks] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [wordChunking, setWordChunking] = useState(false);
 
   const [speechRate, setSpeechRate] = useState(0.8);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [activeSpeechCharIndex, setActiveSpeechCharIndex] = useState(-1);
+  const [speakingLessonId, setSpeakingLessonId] = useState(null);
+
+  // ================= READ-ALONG SCORING =================
+  const recognitionRef = useRef(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingLessonId, setRecordingLessonId] = useState(null);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [readingResult, setReadingResult] = useState(null);
+  const [recognitionError, setRecognitionError] = useState("");
 
   const [mouseY, setMouseY] = useState(0);
 
@@ -227,6 +238,62 @@ function LessonPage() {
     setSelectedConfusingGroup(null);
   }
 
+  // ================= WORD CHUNKING =================
+
+  function chunkWord(word) {
+    const cleanWord = word.toLowerCase();
+
+    const knownChunks = {
+      photosynthesis: ["pho", "to", "syn", "the", "sis"],
+      microorganisms: ["micro", "or", "gan", "isms"],
+      microorganism: ["micro", "or", "gan", "ism"],
+      ecosystem: ["eco", "sys", "tem"],
+      ecosystems: ["eco", "sys", "tems"],
+      organisms: ["or", "gan", "isms"],
+      organism: ["or", "gan", "ism"],
+      producers: ["pro", "du", "cers"],
+      consumers: ["con", "su", "mers"],
+      environment: ["en", "vi", "ron", "ment"],
+      biodiversity: ["bio", "di", "ver", "si", "ty"],
+      respiration: ["res", "pi", "ra", "tion"],
+      decomposition: ["de", "com", "po", "si", "tion"],
+      adaptation: ["ad", "ap", "ta", "tion"],
+      population: ["pop", "u", "la", "tion"],
+      community: ["com", "mu", "ni", "ty"],
+      interaction: ["in", "ter", "ac", "tion"],
+    };
+
+    if (knownChunks[cleanWord]) {
+      return knownChunks[cleanWord].join(" · ");
+    }
+
+    if (cleanWord.length < 7) return word;
+
+    const chunks = [];
+    let current = "";
+
+    for (let i = 0; i < cleanWord.length; i++) {
+      current += cleanWord[i];
+      const next = cleanWord[i + 1] || "";
+      const nextNext = cleanWord[i + 2] || "";
+
+      if (
+        current.length >= 3 &&
+        /[aeiouy]/i.test(current) &&
+        next &&
+        /[^aeiouy]/i.test(next) &&
+        nextNext &&
+        /[aeiouy]/i.test(nextNext)
+      ) {
+        chunks.push(current);
+        current = "";
+      }
+    }
+
+    if (current) chunks.push(current);
+    return chunks.length > 1 ? chunks.join(" · ") : word;
+  }
+
   // ================= LESSON TEXT =================
 
   function renderLessonText(text, lessonId) {
@@ -265,9 +332,33 @@ function LessonPage() {
       /(\b[\w'-]+\b)/g
     );
 
+    // SpeechSynthesis onboundary gives a character offset.
+    // Keep the same offsets while rendering the lesson so the
+    // spoken word can be highlighted exactly where it appears.
+    let textOffset = 0;
+
     return parts.map((part, index) => {
+      const partStart = textOffset;
+      const partEnd = partStart + part.length;
+      textOffset = partEnd;
+
       const cleanWord =
         part.toLowerCase();
+
+      const isSpeechActive =
+        speakingLessonId === lessonId &&
+        activeSpeechCharIndex >= partStart &&
+        activeSpeechCharIndex < partEnd &&
+        /\b[\w'-]+\b/.test(part);
+
+      const speechHighlightStyle = isSpeechActive
+        ? {
+            background: "#FFE08A",
+            boxShadow: "0 0 0 3px rgba(255, 208, 70, 0.35)",
+            borderRadius: "5px",
+            transition: reduceMotion ? "none" : "background 0.12s ease, box-shadow 0.12s ease",
+          }
+        : {};
 
       // =============================
       // DIFFICULT WORD
@@ -282,6 +373,7 @@ function LessonPage() {
             key={index}
             type="button"
             className="difficult-word"
+            style={speechHighlightStyle}
             onClick={() =>
               handleWordClick(
                 difficultHelp
@@ -289,7 +381,7 @@ function LessonPage() {
             }
             title="Click for simple meaning"
           >
-            {part}
+            {wordChunking ? chunkWord(part) : part}
           </button>
         );
       }
@@ -337,6 +429,7 @@ function LessonPage() {
             type="button"
             className="confusing-word"
             style={{
+              ...speechHighlightStyle,
               backgroundColor:
                 colors[
                   groupNumber %
@@ -367,12 +460,223 @@ function LessonPage() {
       // =============================
 
       return (
-        <span key={index}>
+        <span
+          key={index}
+          style={speechHighlightStyle}
+        >
           {part}
         </span>
       );
     });
   }
+
+  // ================= READ-ALONG SCORING =================
+
+  function getPracticePassage(lesson) {
+    if (!lesson?.notes) return "";
+
+    const words = lesson.notes.trim().split(/\s+/);
+    // Keep the activity short enough to avoid tiring the learner.
+    return words.slice(0, 60).join(" ");
+  }
+
+  function tokenizeForReading(text) {
+    return (text.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) || [])
+      .map((word) => word.toLowerCase().replace(/[’]/g, "'"));
+  }
+
+  function scoreReading(expectedText, spokenText) {
+    const expected = tokenizeForReading(expectedText);
+    const spoken = tokenizeForReading(spokenText);
+
+    const rows = expected.length + 1;
+    const cols = spoken.length + 1;
+    const dp = Array.from({ length: rows }, () =>
+      Array(cols).fill(0)
+    );
+
+    for (let i = 0; i < rows; i++) dp[i][0] = i;
+    for (let j = 0; j < cols; j++) dp[0][j] = j;
+
+    for (let i = 1; i < rows; i++) {
+      for (let j = 1; j < cols; j++) {
+        const same = expected[i - 1] === spoken[j - 1];
+        dp[i][j] = same
+          ? dp[i - 1][j - 1]
+          : Math.min(
+              dp[i - 1][j - 1] + 1,
+              dp[i - 1][j] + 1,
+              dp[i][j - 1] + 1
+            );
+      }
+    }
+
+    const alignment = [];
+    let i = expected.length;
+    let j = spoken.length;
+
+    while (i > 0 || j > 0) {
+      if (
+        i > 0 &&
+        j > 0 &&
+        expected[i - 1] === spoken[j - 1]
+      ) {
+        alignment.unshift({
+          expected: expected[i - 1],
+          spoken: spoken[j - 1],
+          type: "match",
+        });
+        i--;
+        j--;
+        continue;
+      }
+
+      const substitution =
+        i > 0 && j > 0 ? dp[i - 1][j - 1] + 1 : Infinity;
+      const deletion =
+        i > 0 ? dp[i - 1][j] + 1 : Infinity;
+      const insertion =
+        j > 0 ? dp[i][j - 1] + 1 : Infinity;
+      const best = Math.min(
+        substitution,
+        deletion,
+        insertion
+      );
+
+      if (best === substitution) {
+        alignment.unshift({
+          expected: expected[i - 1],
+          spoken: spoken[j - 1],
+          type: "practice",
+        });
+        i--;
+        j--;
+      } else if (best === deletion) {
+        alignment.unshift({
+          expected: expected[i - 1],
+          spoken: "",
+          type: "skipped",
+        });
+        i--;
+      } else {
+        alignment.unshift({
+          expected: "",
+          spoken: spoken[j - 1],
+          type: "extra",
+        });
+        j--;
+      }
+    }
+
+    const matched = alignment.filter(
+      (item) => item.type === "match"
+    ).length;
+    const practiceWords = alignment.filter(
+      (item) =>
+        item.type === "practice" ||
+        item.type === "skipped"
+    );
+
+    const accuracy = expected.length
+      ? Math.round((matched / expected.length) * 100)
+      : 0;
+
+    return {
+      accuracy,
+      matched,
+      total: expected.length,
+      practiceWords,
+      spokenText,
+    };
+  }
+
+  function startReadingCheck(lesson) {
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setRecognitionError(
+        "Speech recognition is not supported in this browser. Try Google Chrome."
+      );
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-IN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalTranscript = "";
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+      setRecordingLessonId(lesson.l_id);
+      setLiveTranscript("");
+      setReadingResult(null);
+      setRecognitionError("");
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += `${transcript} `;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      setLiveTranscript(
+        `${finalTranscript}${interimTranscript}`.trim()
+      );
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "no-speech") return;
+      setRecognitionError(
+        "We couldn't hear the reading clearly. Please try again in a quiet place."
+      );
+      setIsRecording(false);
+      setRecordingLessonId(null);
+    };
+
+    recognition.onend = () => {
+      const spoken = finalTranscript.trim();
+      setIsRecording(false);
+      setRecordingLessonId(null);
+
+      if (spoken) {
+        setReadingResult({
+          ...scoreReading(getPracticePassage(lesson), spoken),
+          lessonId: lesson.l_id,
+        });
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }
+
+  function stopReadingCheck() {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
 
   // ================= MOUSE FOR RULER =================
 
@@ -390,9 +694,12 @@ function readAloud(lesson) {
   if (!lesson?.notes) return;
 
   window.speechSynthesis.cancel();
+  setActiveSpeechCharIndex(-1);
+  setSpeakingLessonId(lesson.l_id);
 
-  const text = `${lesson.name}. ${lesson.notes}`;
-
+  // Keep the spoken text identical to lesson.notes so
+  // SpeechSynthesisEvent.charIndex maps to the rendered text.
+  const text = lesson.notes;
   const speech = new SpeechSynthesisUtterance(text);
 
   speech.rate = speechRate;
@@ -402,6 +709,12 @@ function readAloud(lesson) {
   speech.onstart = () => {
     setIsSpeaking(true);
     setIsPaused(false);
+  };
+
+  speech.onboundary = (event) => {
+    if (typeof event.charIndex === "number") {
+      setActiveSpeechCharIndex(event.charIndex);
+    }
   };
 
   speech.onpause = () => {
@@ -415,11 +728,15 @@ function readAloud(lesson) {
   speech.onend = () => {
     setIsSpeaking(false);
     setIsPaused(false);
+    setActiveSpeechCharIndex(-1);
+    setSpeakingLessonId(null);
   };
 
   speech.onerror = () => {
     setIsSpeaking(false);
     setIsPaused(false);
+    setActiveSpeechCharIndex(-1);
+    setSpeakingLessonId(null);
   };
 
   window.speechSynthesis.speak(speech);
@@ -448,6 +765,8 @@ function stopReading() {
   window.speechSynthesis.cancel();
   setIsSpeaking(false);
   setIsPaused(false);
+  setActiveSpeechCharIndex(-1);
+  setSpeakingLessonId(null);
 }
 
   // ================= BACK =================
@@ -835,6 +1154,188 @@ function stopReading() {
                         </div>
 
 
+                          {/* ================= READ-ALONG CHECK ================= */}
+
+                          <div
+                            style={{
+                              marginTop: "16px",
+                              padding: "18px",
+                              borderRadius: "14px",
+                              background: "#F4FAFA",
+                              border: "1px solid #D7ECEC",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: "12px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <div>
+                                <strong style={{ fontSize: "18px" }}>
+                                  🎙️ Read & Check
+                                </strong>
+                                <p
+                                  style={{
+                                    margin: "5px 0 0",
+                                    opacity: 0.75,
+                                    fontSize: "14px",
+                                  }}
+                                >
+                                  Read the short passage aloud. We'll gently show words that may need more practice.
+                                </p>
+                              </div>
+
+                              {!isRecording || recordingLessonId !== lesson.l_id ? (
+                                <button
+                                  className="read-aloud-button"
+                                  onClick={() => startReadingCheck(lesson)}
+                                >
+                                  🎙️ Start Reading
+                                </button>
+                              ) : (
+                                <button
+                                  className="read-aloud-button"
+                                  onClick={stopReadingCheck}
+                                >
+                                  ⏹ Finish Reading
+                                </button>
+                              )}
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop: "14px",
+                                padding: "14px",
+                                background: "white",
+                                borderRadius: "10px",
+                                lineHeight: 1.8,
+                              }}
+                            >
+                              <strong>Practice passage</strong>
+                              <p style={{ marginBottom: 0 }}>
+                                {getPracticePassage(lesson)}
+                              </p>
+                            </div>
+
+                            {isRecording && recordingLessonId === lesson.l_id && (
+                              <p
+                                style={{
+                                  margin: "12px 0 0",
+                                  fontSize: "14px",
+                                  color: "#277F7F",
+                                }}
+                              >
+                                🔴 Listening… keep reading at your comfortable pace.
+                              </p>
+                            )}
+
+                            {liveTranscript && recordingLessonId === lesson.l_id && (
+                              <div
+                                style={{
+                                  marginTop: "10px",
+                                  fontSize: "14px",
+                                  opacity: 0.8,
+                                }}
+                              >
+                                <strong>Heard:</strong> {liveTranscript}
+                              </div>
+                            )}
+
+                            {recognitionError && (
+                              <p
+                                style={{
+                                  margin: "10px 0 0",
+                                  padding: "10px",
+                                  borderRadius: "8px",
+                                  background: "#FFF3E8",
+                                }}
+                              >
+                                {recognitionError}
+                              </p>
+                            )}
+
+                            {readingResult && readingResult.lessonId === lesson.l_id && (
+                              <div
+                                style={{
+                                  marginTop: "14px",
+                                  padding: "14px",
+                                  borderRadius: "10px",
+                                  background: "#FFFFFF",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "baseline",
+                                    gap: "8px",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <strong style={{ fontSize: "22px" }}>
+                                    {readingResult.accuracy}%
+                                  </strong>
+                                  <span>reading match</span>
+                                </div>
+
+                                <p
+                                  style={{
+                                    margin: "5px 0 12px",
+                                    fontSize: "13px",
+                                    opacity: 0.7,
+                                  }}
+                                >
+                                  This is a gentle practice signal, not a test. Speech recognition can sometimes mishear words.
+                                </p>
+
+                                {readingResult.practiceWords.length > 0 ? (
+                                  <div>
+                                    <strong>Words to practice</strong>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: "8px",
+                                        marginTop: "8px",
+                                      }}
+                                    >
+                                      {readingResult.practiceWords.map((item, practiceIndex) => (
+                                        <span
+                                          key={`${item.expected}-${practiceIndex}`}
+                                          style={{
+                                            padding: "5px 9px",
+                                            borderRadius: "8px",
+                                            background: "#FFF0C7",
+                                          }}
+                                          title={
+                                            item.type === "skipped"
+                                              ? "This word may have been skipped."
+                                              : `Heard: ${item.spoken}`
+                                          }
+                                        >
+                                          {item.expected}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      padding: "10px",
+                                      borderRadius: "8px",
+                                      background: "#EAF7EE",
+                                    }}
+                                  >
+                                    🌟 Great job! No specific words were flagged for extra practice.
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
                           {/* ================= DIFFICULT WORD CARD ================= */}
 
                           {selectedWord && (
@@ -890,9 +1391,9 @@ function stopReading() {
                                         "5px 0 10px",
                                     }}
                                   >
-                                    {
-                                      selectedWord.word
-                                    }
+                                    {wordChunking
+                                      ? chunkWord(selectedWord.word)
+                                      : selectedWord.word}
                                   </h3>
 
                                 </div>
@@ -1485,6 +1986,12 @@ function stopReading() {
               label="Reduce Motion"
               value={reduceMotion}
               setValue={setReduceMotion}
+            />
+
+            <AccessibilityToggle
+              label="🔤 Word Chunking"
+              value={wordChunking}
+              setValue={setWordChunking}
             />
 
           </div>
